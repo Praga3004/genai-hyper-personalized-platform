@@ -1,0 +1,7 @@
+fastapi
+fish_audio_sdk
+python-dotenv
+uvicorn
+openai
+pydantic
+requests
