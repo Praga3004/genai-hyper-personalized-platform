@@ -36,7 +36,7 @@ export default function ResultTable({ results = [] }) {
               <td>
                     {r.image_url ? (
                       <img
-                        src={`https://genai-hyper-personalized-platform-v.vercel.app/:8000${r.image_url}`}
+                        src={`https://genai-hyper-personalized-platform-v.vercel.app/${r.image_url}`}
                         alt="Generated"
                         style={{
                           width: "120px",
@@ -55,7 +55,7 @@ export default function ResultTable({ results = [] }) {
                       <audio 
                         controls 
                         style={{ width: "160px" }}
-                        src={`https://genai-hyper-personalized-platform-v.vercel.app/:8000${r.audio_url}`}
+                        src={`https://genai-hyper-personalized-platform-v.vercel.app/${r.audio_url}`}
                       >
                         Your browser does not support audio playback.
                       </audio>
