@@ -1,0 +1,70 @@
+.slideshow-container {
+  margin-top: 20px;
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.slide-card {
+  transition: all 0.3s ease;
+}
+
+.slide-card h2 {
+  color: #2d3748;
+}
+
+.slideshow-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.slideshow-controls button {
+  background-color: #4a90e2;
+  color: white;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.slide-indicator {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Tooltip */
+.tooltip {
+  margin-top: 12px;
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  font-weight: bold;
+  color: #4a4a4a;
+}
+
+.tooltiptext {
+  visibility: hidden;
+  width: 250px;
+  background-color: #333;
+  color: #fff;
+  text-align: left;
+  border-radius: 8px;
+  padding: 10px;
+  position: absolute;
+  z-index: 1;
+  top: -10px;
+  left: 110%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext,
+.tooltip:active .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}

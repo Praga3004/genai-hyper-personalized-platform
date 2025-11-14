@@ -1,0 +1,242 @@
+{
+  "1-Velachery Ward No.175 Periyar Nagar 1st Street": {
+    "problems": [
+      "Traffic congestion due to narrow lanes and parked vehicles",
+      "Irregular water supply and tanker dependency",
+      "Overflowing garbage bins and poor waste management",
+      "Mosquito breeding after rainfall",
+      "Insufficient street lighting at night"
+    ],
+    "solutions": [
+      "Implement one-way traffic management and reflective lane markings",
+      "Install a shared underground water tank with automated monitoring",
+      "Ensure daily waste collection with assigned sanitation staff",
+      "Conduct bi-weekly fogging and drain cleaning drives",
+      "Install LED motion-sensor street lights for safety"
+    ]
+  },
+  "2-Velachery Ward No.175 Periyar Nagar 1st Cross Street": {
+    "problems": [
+      "Broken internal roads causing water stagnation",
+      "Drainage blockages during monsoon",
+      "Lack of greenery and shade",
+      "Poor waste segregation practices",
+      "Voltage fluctuations and minor power cuts"
+    ],
+    "solutions": [
+      "Re-lay the street with interlock tiles for better drainage",
+      "Introduce periodic drain desilting and covered slabs",
+      "Plant native trees under 'Green Cross Street Drive'",
+      "Distribute color-coded bins and reward segregation compliance",
+      "Upgrade local transformer to handle residential load"
+    ]
+  },
+  "3-Velachery Ward No.175 Periyar Nagar 2nd Street": {
+    "problems": [
+      "Illegal roadside parking causing congestion",
+      "Potholes and uneven surface after utility works",
+      "Drainage clogs during rain",
+      "Dim or broken street lights",
+      "Mosquito breeding in stagnant drain corners"
+    ],
+    "solutions": [
+      "Enforce single-side parking and install parking signboards",
+      "Resurface road and improve stormwater outlets",
+      "Schedule monthly drain jet cleaning",
+      "Replace lamps with solar-powered LEDs",
+      "Introduce routine drain disinfection drives"
+    ]
+  },
+  "4-Velachery Ward No.175 Periyar Nagar 3rd Street": {
+    "problems": [
+      "Pothole-ridden road surface",
+      "Sewage backflow during heavy rain",
+      "Overflowing waste bins",
+      "Mosquito menace post-rain",
+      "Lack of open recreational space"
+    ],
+    "solutions": [
+      "Repair roads under a 'Zero Pothole Campaign'",
+      "Install non-return valves at manholes",
+      "Deploy closed-lid bins every 100 meters",
+      "Conduct fogging after each rainfall",
+      "Reclaim empty plots for community parks"
+    ]
+  },
+  "5-Velachery Ward No.175 Periyar Nagar 4th Street": {
+    "problems": [
+      "Dependence on water tankers",
+      "Unfinished road construction projects",
+      "Mosquito and hygiene issues",
+      "Frequent power fluctuations",
+      "Improper roadside waste dumping"
+    ],
+    "solutions": [
+      "Coordinate with Metro Water for direct pipeline connection",
+      "Publish roadwork completion schedules for transparency",
+      "Launch a 10-day 'Clean Street Challenge'",
+      "Replace damaged wiring and add local voltage stabilizers",
+      "Install CCTV to prevent open dumping"
+    ]
+  },
+  "6-Velachery Ward No.175 Periyar Nagar 5th Street": {
+    "problems": [
+      "Insufficient street lighting",
+      "Water stagnation after rain",
+      "Narrow roads causing congestion",
+      "Poor waste segregation",
+      "Sewage leakages and odor"
+    ],
+    "solutions": [
+      "Install LED poles at every 50m interval",
+      "Construct rainwater side channels for quick runoff",
+      "Restrict heavy vehicles during peak hours",
+      "Door-to-door waste segregation awareness drive",
+      "Replace cracked pipelines and cover manholes"
+    ]
+  },
+  "7-Velachery Ward No.175 Periyar Nagar 6th Street": {
+    "problems": [
+      "Sewage overflow during rains",
+      "Damaged internal roads",
+      "Mosquito breeding in stagnant drains",
+      "Power outages during rain",
+      "Lack of trees and green cover"
+    ],
+    "solutions": [
+      "Rebuild drainage with RCC pipelines",
+      "Resurface roads with anti-skid material and proper slopes",
+      "Apply bio-larvicide weekly in drains",
+      "Add new power distribution point via TNEB",
+      "Plant shade trees along both sides of the street"
+    ]
+  },
+  "8-Velachery Ward No.175 Periyar Nagar 7th Street": {
+    "problems": [
+      "No public bins and irregular waste pickup",
+      "Potholes and broken patches",
+      "Mosquito nuisance post-rain",
+      "Low water pressure during summer",
+      "Dim street lighting"
+    ],
+    "solutions": [
+      "Install twin-bin system for wet/dry waste every 150m",
+      "Include this street in priority road repair list",
+      "Create resident-led mosquito monitoring teams",
+      "Repair local water valves and set alternate-day supply",
+      "Replace poles with high-mast LEDs"
+    ]
+  },
+  "9-Velachery Ward No.175 Periyar Nagar 8th Street": {
+    "problems": [
+      "Voltage dips and unstable electricity",
+      "Drainage blockage and overflow",
+      "Delayed garbage collection",
+      "Lack of greenery and tree cover",
+      "Traffic near nearby schools"
+    ],
+    "solutions": [
+      "Upgrade transformer and convert overhead lines to underground cables",
+      "Schedule monthly desilting with mechanical equipment",
+      "Ensure daily pickup by designated cleaning crew",
+      "Start 'My Street My Tree' campaign with saplings",
+      "Implement school-zone speed limits and signage"
+    ]
+  },
+  "10-Velachery Ward No.175 Periyar Nagar 9th Street": {
+    "problems": [
+      "Stagnant rainwater and mosquito breeding",
+      "Street lights not maintained",
+      "Uneven road surface",
+      "Improper waste disposal habits",
+      "No drainage slope at intersections"
+    ],
+    "solutions": [
+      "Construct soak pits every 30 meters for rainwater absorption",
+      "Enable online maintenance complaints for lighting",
+      "Resurface roads before monsoon season",
+      "Organize awareness sessions on waste management",
+      "Rebuild road edges with proper gradient"
+    ]
+  },
+  "11-Velachery Ward No.175 Periyar Nagar 10th Street": {
+    "problems": [
+      "Vendor encroachments on footpaths",
+      "Traffic congestion near junctions",
+      "Drainage maintenance delays",
+      "Insufficient lighting for safety",
+      "Overflowing garbage in corners"
+    ],
+    "solutions": [
+      "Create regulated vendor zones with ID cards",
+      "Add lane dividers and pedestrian crossings",
+      "Clean stormwater drains quarterly",
+      "Install motion-sensor LED lamps",
+      "Deploy smart bins that alert when full"
+    ]
+  },
+  "12-Velachery Ward No.175 Periyar Nagar 11th Street": {
+    "problems": [
+      "Low voltage and frequent outages",
+      "Sewage mixing with rainwater",
+      "Broken footpaths and unsafe walking space",
+      "Lack of greenery and shaded areas",
+      "Mosquito breeding during monsoon"
+    ],
+    "solutions": [
+      "Upgrade transformer and balance phase load",
+      "Separate sewage and rainwater channels",
+      "Re-lay footpaths with interlock tiles and ramps",
+      "Develop pocket park with native trees",
+      "Weekly fogging and drain maintenance"
+    ]
+  },
+  "1-Velachery Ward No.175 TNHB Apartments Door No 1 to 300": {
+    "problems": [
+      "Insufficient parking within apartment premises",
+      "Old and blocked drainage pipelines",
+      "Outdated internal electrical wiring",
+      "Common area waste mismanagement",
+      "Lack of recreational or green spaces"
+    ],
+    "solutions": [
+      "Introduce double-deck parking or shared slot rotation",
+      "Replace internal pipelines with modern PVC systems",
+      "Upgrade to modern MCB-based electrical panels",
+      "Assign dedicated housekeeping staff for common areas",
+      "Convert rooftops or corners into green recreation zones"
+    ]
+  },
+  "999-OVERSEAS ELECTORS": {
+    "problems": [
+      "Difficulty updating voter details remotely",
+      "Lack of communication with constituency updates",
+      "No postal ballot or e-voting option",
+      "Limited election awareness among NRIs",
+      "Frequent voter record mismatches"
+    ],
+    "solutions": [
+      "Create an online voter update assistance portal",
+      "Launch a WhatsApp broadcast channel for NRI voters",
+      "Advocate pilot e-voting programs for overseas citizens",
+      "Run 'Vote from Anywhere' digital awareness campaigns",
+      "Sync records with Election Commission database quarterly"
+    ]
+  },
+  "NaN": {
+    "problems": [
+      "Unregistered residents and missing voter data",
+      "Incomplete or invalid address information",
+      "Low awareness about voter services",
+      "Data entry errors in election rolls",
+      "Difficulty contacting local ward office"
+    ],
+    "solutions": [
+      "Conduct door-to-door voter verification drives",
+      "Assist residents in submitting correct address proofs",
+      "Organize 'Know Your Polling Booth' workshops",
+      "Coordinate with Election Commission for data cleanup",
+      "Set up a local helpline for voter record updates"
+    ]
+  }
+}

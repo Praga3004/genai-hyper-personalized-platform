@@ -1,0 +1,82 @@
+:root {
+  --bg: #f5f5f5;
+  --card: #fff;
+  --text: #0a0a23;
+  --muted: #6b7280;
+  --primary: #0a0a23;
+  --border: #e5e7eb;
+}
+.table-shell {
+  margin-top: 8px;
+}
+
+/* FIXED HEIGHT + SCROLL HERE */
+.table-scroll {
+  max-height: 420px;   /* adjust as you like */
+  overflow-y: auto;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+
+.container { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
+.h1 { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.card.pad { padding: 16px; }
+
+.row { display: flex; align-items: center; gap: 12px; }
+.row.spread { justify-content: space-between; }
+
+.filters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 900px) { .filters { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .filters { grid-template-columns: 1fr; } }
+
+label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+select, input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.table th { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+.btn { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.badge { font-size: 12px; color: var(--muted); }
+.footer-bar { margin-top: 16px; }
+/* simple circle spinner */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid #ddd;
+  border-top-color: #2563eb;
+  animation: spin 0.7s linear infinite;
+  margin: 0 auto 8px auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* full-screen overlay for generating state */
+.overlay-loading {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.overlay-box {
+  background: #ffffff;
+  padding: 16px 24px;
+  border-radius: 8px;
+  min-width: 260px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
