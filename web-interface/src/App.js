@@ -69,7 +69,7 @@ function App() {
           id: v.id || `local-${i + 1}`,
         }));
 
-        return fetch("https://genai-hyper-personalized-platform-vxg3-8elra46mz-a-xtr-labs.vercel.app:8000/api/classify-voter", {
+        return fetch("https://genai-hyper-personalized-platform-v.vercel.app/:8000/api/classify-voter", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ voters: parsedWithIds }),
@@ -113,7 +113,7 @@ function App() {
     setIsGenerating(true);
     setResults([]);
 
-    fetch("https://genai-hyper-personalized-platform-vxg3-8elra46mz-a-xtr-labs.vercel.app:8000/api/generate-campaign", {
+    fetch("https://genai-hyper-personalized-platform-v.vercel.app/:8000/api/generate-campaign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ voters: selectedRows }),
