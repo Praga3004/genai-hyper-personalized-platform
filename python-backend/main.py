@@ -253,7 +253,9 @@ def generate_campaign(req: BulkVoterRequest):
 
         try:
             dalle_prompt = (
-                f"Create a clean, political informative poster. "
+                "A vibrant, abstract illustration inspired by Tamil Nadu culture, "
+        "including festive patterns, traditional textures, artistic gradients, "
+        "and decorative motifs. No text, no people, no logos, no political symbols. "
                 f"Theme: {category}. "
                 f"Message in English letters (not Tamil script): {english_msg}. "
                 f"Style: professional, sharp, high-contrast, Indian-election theme."

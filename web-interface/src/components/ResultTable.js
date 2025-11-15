@@ -54,7 +54,7 @@ export default function ResultTable({ results = [] }) {
                     {r.audio_url ? (
                       <audio 
                         controls 
-                        style={{ width: "160px" }}
+                        style={{ width: "200px" }}
                         src={`https://genai-hyper-personalized-platform-v.vercel.app/${r.audio_url}`}
                       >
                         Your browser does not support audio playback.
