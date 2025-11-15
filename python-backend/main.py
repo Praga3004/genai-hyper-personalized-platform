@@ -9,7 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-
+import time
+import threading
 from openai import OpenAI
 from fish_audio_sdk import Session, TTSRequest
 
@@ -34,8 +35,48 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 AudioFish = Session(FISH_AUDIO_API_KEY)
 
 # Use a safe directory for audio storage
+
 AUDIO_DIR = "/tmp/audio"
+IMAGE_DIR = "/tmp/images"
+
 os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(IMAGE_DIR, exist_ok=True)
+
+
+def cleanup_old_files():
+    now = time.time()
+    max_age = 3600  # 1 hour
+
+    folders = [AUDIO_DIR, IMAGE_DIR]
+
+    for folder in folders:
+        if not os.path.exists(folder):
+            continue
+
+        for filename in os.listdir(folder):
+            path = os.path.join(folder, filename)
+
+            try:
+                if os.path.isfile(path):
+                    age = now - os.path.getmtime(path)
+                    if age > max_age:
+                        os.remove(path)
+                        print("🗑️ Deleted old file:", path)
+            except Exception as e:
+                print("⚠️ Cleanup error:", e)
+
+
+def start_cleanup_scheduler():
+    def loop():
+        while True:
+            cleanup_old_files()
+            time.sleep(1800)  # Run every 30 minutes
+
+    thread = threading.Thread(target=loop, daemon=True)
+    thread.start()
+
+
+start_cleanup_scheduler()
 
 GEN_MODEL = "gpt-4.1-mini"
 
