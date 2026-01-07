@@ -1,18 +1,16 @@
 import os
 import json
-import random
-import uuid
-from typing import List, Dict, Any
-import base64
-from fastapi import FastAPI, HTTPException
+from typing import List, Dict, Any, Optional
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import time
-import threading
 from openai import OpenAI
-from fish_audio_sdk import Session, TTSRequest
+from supabase import create_client, Client
+from prompt import get_prompt_template, format_prompt
+from twilio.rest import Client 
 
 # -------------------------------------------------
 # Load environment variables
@@ -20,103 +18,163 @@ from fish_audio_sdk import Session, TTSRequest
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-FISH_AUDIO_API_KEY = os.getenv("FISH_AUDIO_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+PHONE_NUMBER = os.getenv("PHONE_NUMBER", "")
+AZURE_ENDPOINT = os.getenv("AZURE_ENDPOINT")
 
+
+# Parse phone numbers from .env (comma-separated list)
+PHONE_NUMBERS = [p.strip() for p in PHONE_NUMBER.split(",") if p.strip()] if PHONE_NUMBER else []
 if not OPENAI_API_KEY:
     raise RuntimeError("Missing OPENAI_API_KEY in .env")
 
-if not FISH_AUDIO_API_KEY:
-    raise RuntimeError("Missing FISH_AUDIO_API_KEY in .env")
+if not SUPABASE_URL:
+    raise RuntimeError("Missing SUPABASE_URL in .env")
+
+if not SUPABASE_KEY:
+    raise RuntimeError("Missing SUPABASE_KEY in .env")
 
 # -------------------------------------------------
 # Initialize API Clients
 # -------------------------------------------------
-client = OpenAI(api_key=OPENAI_API_KEY)
-AudioFish = Session(FISH_AUDIO_API_KEY)
+client = OpenAI(base_url=AZURE_ENDPOINT, api_key=OPENAI_API_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Use a safe directory for audio storage
-
-AUDIO_DIR = "/tmp/audio"
-IMAGE_DIR = "/tmp/images"
-
-os.makedirs(AUDIO_DIR, exist_ok=True)
-os.makedirs(IMAGE_DIR, exist_ok=True)
-
-
-def cleanup_old_files():
-    now = time.time()
-    max_age = 3600  # 1 hour
-
-    folders = [AUDIO_DIR, IMAGE_DIR]
-
-    for folder in folders:
-        if not os.path.exists(folder):
-            continue
-
-        for filename in os.listdir(folder):
-            path = os.path.join(folder, filename)
-
-            try:
-                if os.path.isfile(path):
-                    age = now - os.path.getmtime(path)
-                    if age > max_age:
-                        os.remove(path)
-                        print("🗑️ Deleted old file:", path)
-            except Exception as e:
-                print("⚠️ Cleanup error:", e)
+# Initialize Twilio client if credentials are available
+twilio_client = None
+if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+    try:
+        twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+    except Exception as e:
+        print(f"⚠️ Twilio initialization failed: {e}")
 
 
-def start_cleanup_scheduler():
-    def loop():
-        while True:
-            cleanup_old_files()
-            time.sleep(1800)  # Run every 30 minutes
-
-    thread = threading.Thread(target=loop, daemon=True)
-    thread.start()
-
-
-start_cleanup_scheduler()
-
-GEN_MODEL = "gpt-4.1-mini"
+GEN_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # Default to gpt-4o-mini, can be overridden
 
 CATEGORY_DESCRIPTIONS = {
-    "First-Time Voter": "Age roughly 18–22, voting for the first time...",
-    "Apathetic Voter": "Low interest in politics...",
-    "Swing Voter": "Not loyal to any party...",
-    "Women Voter": "Focus on safety, family welfare...",
-    "Senior Voter": "Age 60+, cares about pensions, healthcare...",
+    "Youth / First-time Voter": "Age roughly 18–22, voting for the first time. Focus on education, employment opportunities, digital access, and social infrastructure. Energetic, tech-savvy, and looking for opportunities to build their future.",
+    "Working Professional": "Employed professionals, typically age 25–55. Focus on transportation, connectivity, power supply, urban infrastructure, housing, and cost of living. Value efficiency, quality of life, and work-life balance.",
+    "Women": "Female voters of all ages. Primary concerns include safety (road, pedestrian, public safety), health, education, social infrastructure, family welfare, and women's rights. Focus on creating safe and supportive environments.",
+    "Senior Citizens": "Age 60+ voters. Focus on water supply, groundwater management, health services, pensions, healthcare, social infrastructure, and quality of life in their golden years. Value stability and care.",
+    "Daily Wage / Service Worker": "Daily wage earners and service workers. Focus on affordable transportation, housing, rentals, urban cost of living, and basic infrastructure. Need accessible and affordable services for daily life.",
 }
 
 # -------------------------------------------------
 # FastAPI Setup
 # -------------------------------------------------
-app = FastAPI()
+app = FastAPI(
+    title="Election Campaign API",
+    description="API for generating personalized election campaign messages",
+    version="1.0.0"
+)
+
+# CORS configuration - allow frontend origins
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Add exception handler for 404
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "Not Found",
+                "message": f"The endpoint {request.url.path} was not found.",
+                "available_endpoints": [
+                    "/api/health",
+                    "/api/voters",
+                    "/api/voters/filters/options",
+                    "/api/voters/{voter_id}",
+                    "/api/generate-campaign-from-ids",
+                    "/api/classify-voter",
+                    "/api/generate-campaign"
+                ]
+            }
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail}
+    )
+
+# -------------------------------------------------
+# Health Check Endpoint
+# -------------------------------------------------
+@app.get("/")
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint"""
+    try:
+        # Test Supabase connection
+        test_query = supabase.table("voters_master").select("voter_id").limit(1).execute()
+        db_status = "connected" if test_query.data is not None else "no_data"
+        db_count = len(test_query.data) if test_query.data else 0
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+        db_count = 0
+    
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "database_records": db_count,
+        "openai_configured": bool(OPENAI_API_KEY),
+        "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
+        "audio_enabled": False,  # Audio generation removed
+        "endpoints": {
+            "health": "/api/health",
+            "voters": "/api/voters",
+            "filter_options": "/api/voters/filters/options",
+            "generate_campaign": "/api/generate-campaign-from-ids"
+        }
+    }
+
 # -------------------------------------------------
 # Data Models
 # -------------------------------------------------
 class VoterProfileIn(BaseModel):
-    id: str
     name: str
     age: int
     gender: str
     location: str
-    voter_history: str
-    interests: List[str]
-    pain_points: List[str]
+    booth_number: str
+    ward: str
+    area: str
+    street: str
+    village: str
+    district: str
+    voter_category: str
+    issue_category: str
+    issue_description: str
+
 
 
 class BulkVoterRequest(BaseModel):
     voters: List[VoterProfileIn]
+
+
+class VoterFilterRequest(BaseModel):
+    voter_category: Optional[str] = None
+    issue_category: Optional[str] = None
+    gender: Optional[str] = None
+    village: Optional[str] = None
+    district: Optional[str] = None
+    ward: Optional[str] = None
+    age_min: Optional[int] = None
+    age_max: Optional[int] = None
+    limit: Optional[int] = 100
+    offset: Optional[int] = 0
+    search: Optional[str] = None  # Search in voter_name or voter_id
 
 # -------------------------------------------------
 # Helper: Voter Classification
@@ -150,14 +208,23 @@ def classify_with_openai(v: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         print("⚠️ Classification fallback:", e)
-        # Simple fallback
-        if v["age"] <= 22:
-            return {"category": "First-Time Voter", "confidence": 0.8}
-        if v["age"] >= 60:
-            return {"category": "Senior Voter", "confidence": 0.8}
-        if v["gender"].lower() == "female":
-            return {"category": "Women Voter", "confidence": 0.7}
-        return {"category": "Swing Voter", "confidence": 0.6}
+        # Simple fallback based on prompt.py categories
+        age = v.get("age", 0)
+        gender = str(v.get("gender", "")).lower()
+        occupation = str(v.get("occupation", "")).lower()
+        
+        if age <= 22:
+            return {"category": "Youth / First-time Voter", "confidence": 0.8}
+        if age >= 60:
+            return {"category": "Senior Citizens", "confidence": 0.8}
+        if gender == "female":
+            return {"category": "Women", "confidence": 0.7}
+        if occupation in ["daily wage", "service worker", "laborer", "worker"]:
+            return {"category": "Daily Wage / Service Worker", "confidence": 0.7}
+        # Default to Working Professional for employed adults
+        if age >= 25 and age < 60:
+            return {"category": "Working Professional", "confidence": 0.6}
+        return {"category": "Youth / First-time Voter", "confidence": 0.5}
 
 
 @app.post("/api/classify-voter")
@@ -166,193 +233,467 @@ def classify_voter(req: BulkVoterRequest):
 
     for v in req.voters:
         voter_dict = v.model_dump()
-        classification = classify_with_openai(voter_dict)
-
-        results.append({
-            **voter_dict,
-            "category": classification.get("category", "Unknown"),
-            "confidence": round(classification.get("confidence", 0.5), 3)
-        })
+        
+        # Use existing voter_category from database if available
+        existing_category = voter_dict.get("voter_category", "").strip()
+        
+        if existing_category:
+            # Category already exists in DB, use it
+            results.append({
+                **voter_dict,
+                "category": existing_category,
+                "confidence": 1.0  # Full confidence since it's from DB
+            })
+        else:
+            # Only classify if category is missing
+            classification = classify_with_openai(voter_dict)
+            results.append({
+                **voter_dict,
+                "category": classification.get("category", "Working Professional"),
+                "confidence": round(classification.get("confidence", 0.5), 3)
+            })
 
     return {"results": results}
 
+
 # -------------------------------------------------
-# Audio Fetch Endpoint (Stable)
+# Supabase Voter Fetching Endpoints
 # -------------------------------------------------
-@app.get("/api/audio/{audio_id}")
-def get_audio(audio_id: str):
-    audio_path = os.path.join(AUDIO_DIR, f"{audio_id}.mp3")
+@app.get("/api/voters")
+def get_voters(
+    voter_category: Optional[str] = Query(None, description="Filter by voter category"),
+    issue_category: Optional[str] = Query(None, description="Filter by issue category"),
+    gender: Optional[str] = Query(None, description="Filter by gender"),
+    village: Optional[str] = Query(None, description="Filter by village"),
+    district: Optional[str] = Query(None, description="Filter by district"),
+    ward: Optional[str] = Query(None, description="Filter by ward"),
+    age_min: Optional[int] = Query(None, description="Minimum age"),
+    age_max: Optional[int] = Query(None, description="Maximum age"),
+    limit: int = Query(100, description="Limit results"),
+    offset: int = Query(0, description="Offset for pagination"),
+    search: Optional[str] = Query(None, description="Search in voter_name or voter_id")
+):
+    """Fetch voters from Supabase with filtering"""
+    try:
+        print(f" GET /api/voters called with filters: category={voter_category}, limit={limit}")
+        
+        query = supabase.table("voters_master").select("*")
+        
+        # Apply filters
+        if voter_category and voter_category != "ALL":
+            query = query.eq("voter_category", voter_category)
+        if issue_category and issue_category != "ALL":
+            query = query.eq("issue_category", issue_category)
+            print(f"issue_category: {issue_category}")
+            print(f"query: {query}")
+        if gender and gender != "ALL":
+            query = query.eq("gender", gender)
+        if village and village != "ALL":
+            query = query.eq("village", village)
+        if district and district != "ALL":
+            query = query.eq("district", district)
+        if ward and ward != "ALL":
+            query = query.eq("ward", ward)
+        if age_min is not None:
+            query = query.gte("age", age_min)
+        if age_max is not None:
+            query = query.lte("age", age_max)
+        
+        # Search functionality - search in voter_name (Supabase OR requires different syntax)
+        if search:
+            # For now, search in voter_name. For voter_id search, client can search by ID directly
+            query = query.ilike("voter_name", f"%{search}%")
+        
+        # Pagination
+        query = query.range(offset, offset + limit - 1)
+        
+        print(f"🔍 Executing Supabase query...")
+        response = query.execute()
+        print(f"✅ Query successful, found {len(response.data)} records")
+        
+        return {"results": response.data, "count": len(response.data)}
+    
+    except Exception as e:
+        print(f"❌ Error fetching voters: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error fetching voters: {str(e)}")
 
-    if not os.path.exists(audio_path):
-        raise HTTPException(status_code=404, detail="Audio file not found")
 
-    def iterfile():
-        with open(audio_path, "rb") as f:
-            yield from f
+@app.get("/api/voters/{voter_id}")
+def get_voter_by_id(voter_id: str):
+    """Get a specific voter by ID"""
+    try:
+        response = supabase.table("voters_master").select("*").eq("voter_id", voter_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Voter not found")
+        return {"result": response.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error fetching voter: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return StreamingResponse(iterfile(), media_type="audio/mpeg")
-@app.get("/api/image/{image_id}")
-def get_image(image_id: str):
-    IMAGE_DIR = "/tmp/images"
-    image_path = os.path.join(IMAGE_DIR, f"{image_id}.png")
 
-    if not os.path.exists(image_path):
-        raise HTTPException(status_code=404, detail="Image not found")
+@app.get("/api/voters/filters/options")
+def get_filter_options():
+    """Get unique values for filter dropdowns"""
+    try:
+        # Get unique values for each filter field (limit to avoid memory issues)
+        # Use distinct() or get all and filter in Python
+        categories = supabase.table("voters_master").select("voter_category").limit(5000).execute()
+        issue_categories = supabase.table("voters_master").select("issue_category").limit(5000).execute()
+        genders = supabase.table("voters_master").select("gender").limit(5000).execute()
+        villages = supabase.table("voters_master").select("village").limit(5000).execute()
+        districts = supabase.table("voters_master").select("district").limit(5000).execute()
+        wards = supabase.table("voters_master").select("ward").limit(5000).execute()
+        
+        # Extract unique values and filter out None/empty values
+        def get_unique_values(data_list, key):
+            unique_set = set()
+            for r in data_list.data:
+                val = r.get(key)
+                if val is not None and str(val).strip():
+                    unique_set.add(str(val).strip())
+            return sorted(list(unique_set))
+        
+        return {
+            "voter_categories": get_unique_values(categories, "voter_category"),
+            "issue_categories": get_unique_values(issue_categories, "issue_category"),
+            "genders": get_unique_values(genders, "gender"),
+            "villages": get_unique_values(villages, "village"),
+            "districts": get_unique_values(districts, "district"),
+            "wards": get_unique_values(wards, "ward")
+        }
+    except Exception as e:
+        print(f"❌ Error fetching filter options: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error fetching filter options: {str(e)}")
 
-    def iterfile():
-        with open(image_path, "rb") as f:
-            yield from f
-
-    return StreamingResponse(iterfile(), media_type="image/png")
-CATEGORY_TEMPLATES = {
-        "First-Time Voter": (
-            "அன்புள்ள {name}, உங்கள் போன்ற இளைஞர்கள் தான் நம் நாட்டின் எதிர்காலம்! "
-            "வேலை வாய்ப்புகள், இலவச AI பயிற்சி மற்றும் லேப்டாப் வழங்கல் போன்ற "
-            "திட்டங்களால் உங்கள் வாழ்க்கையை முன்னேற்ற முடியும். "
-            "{location} தொகுதியில் இளைஞர்களுக்கான வளர்ச்சி வாய்ப்புகளை உருவாக்க நாங்கள் உறுதியளிக்கிறோம். "
-            "உங்கள் வாக்கு நம் புதிய மாற்றத்தின் ஆரம்பம்!"
-        ),
-        "Women Voter": (
-            "அன்புள்ள {name}, பெண்களின் பாதுகாப்பு, குழந்தை பராமரிப்பு மையங்கள், "
-            "சுய உதவி குழுக்களுக்கு நிதி உதவி, பெண்கள் கல்வி ஆகியவற்றில் "
-            "நாம் அதிக கவனம் செலுத்துகிறோம். {location} தொகுதியில் பெண்களுக்கு "
-            "முன்னேற்றம் அளிக்கும் திட்டங்கள் உருவாக்கப்பட்டுள்ளன. "
-            "உங்கள் வாக்கு ஒரு பெண் மாறுதலின் அடையாளம்!"
-        ),
-        "Swing Voter": (
-            "அன்புள்ள {name}, கடந்த தேர்தல்களில் நீங்கள் பல்வேறு கட்சிகளுக்கு வாக்களித்திருக்கலாம். "
-            "{location} பகுதியில் நீர், சாலை, பள்ளி, கழிவுநீர் போன்ற பிரச்சனைகளை "
-            "தீர்க்க நாங்கள் உறுதியளிக்கிறோம். மக்கள் நலனே நம் கொள்கை. "
-            "இந்த முறை மாற்றத்தை உங்களால் தொடங்குங்கள்!"
-        ),
-        "Apathetic Voter": (
-            "அன்புள்ள {name}, உங்கள் வாக்கு மிக முக்கியமானது. "
-            "நீங்கள் அரசியலுக்கு விருப்பமில்லாமல் இருந்தாலும், "
-            "நீங்கள் தேர்ந்தெடுக்கும் ஒரே வாக்கே உங்கள் வாழ்க்கை தரத்தை மாற்றும் சக்தி உடையது. "
-            "{location} பகுதியில் அடிப்படை வசதிகள் மற்றும் வேலை வாய்ப்புகளை மேம்படுத்த "
-            "நாங்கள் பணியாற்றி வருகிறோம். உங்கள் நம்பிக்கை நம் வலிமை!"
-        ),
-        "Senior Voter": (
-            "அன்புள்ள {name}, உங்கள் வாழ்க்கை அனுபவம் நம் சமூகத்தின் அடித்தளம். "
-            "மூத்த குடிமக்களுக்கு மாதாந்திர ஓய்வூதியம், சுகாதார பாதுகாப்பு மற்றும் "
-            "சந்தை விலைகளை கட்டுப்படுத்தும் திட்டங்கள் {location} பகுதியில் விரைவில் அமலாகும். "
-            "உங்கள் வாக்கு நம் தலைமுறையின் நல்வாழ்வுக்கு வழிகாட்டும்!"
-        ),
+# -------------------------------------------------
+# Image Fetch Endpoint
+# -------------------------------------------------
+# Prompt templates are now imported from prompt.py
+# This allows for category-specific prompts based on voter_category and issue_category
+# -------------------------------------------------
+# Helper: Map Supabase voter data to campaign format
+# -------------------------------------------------
+def map_supabase_voter_to_campaign(voter_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert Supabase voter record to campaign generation format"""
+    # Use voter_category from database if available, otherwise map based on profile
+    age = voter_data.get("age", 0)
+    gender = str(voter_data.get("gender", "")).strip()
+    voter_category = str(voter_data.get("voter_category", "")).strip()
+    occupation = str(voter_data.get("occupation", "")).lower() if voter_data.get("occupation") else ""
+    
+    # Use existing voter_category if it matches prompt.py categories, otherwise map
+    valid_categories = [
+        "Youth / First-time Voter",
+        "Working Professional", 
+        "Women",
+        "Senior Citizens",
+        "Daily Wage / Service Worker"
+    ]
+    
+    if voter_category in valid_categories:
+        message_category = voter_category
+    elif age <= 22:
+        message_category = "Youth / First-time Voter"
+    elif age >= 60:
+        message_category = "Senior Citizens"
+    elif gender.lower() == "female":
+        message_category = "Women"
+    elif occupation in ["daily wage", "service worker", "laborer", "worker"]:
+        message_category = "Daily Wage / Service Worker"
+    else:
+        message_category = "Working Professional"
+    
+    # Construct location string
+    location_parts = []
+    if voter_data.get("village"):
+        location_parts.append(str(voter_data["village"]).strip())
+    elif voter_data.get("area"):
+        location_parts.append(str(voter_data["area"]).strip())
+    if voter_data.get("ward"):
+        location_parts.append(f"வார்ட் {str(voter_data['ward']).strip()}")
+    location = ", ".join(location_parts) if location_parts else "உங்கள் பகுதி"
+    
+    # Get pain points from issue
+    pain_points = []
+    if voter_data.get("issue_category"):
+        pain_points.append(str(voter_data["issue_category"]).strip())
+    if voter_data.get("issue_description"):
+        pain_points.append(str(voter_data["issue_description"]).strip())
+    
+    return {
+        "id": voter_data.get("voter_id", ""),
+        "name": str(voter_data.get("voter_name", "")).strip(),
+        "age": age,
+        "gender": gender,
+        "location": location,
+        "voter_history": "Unknown",
+        "interests": [],
+        "pain_points": pain_points,
+        "category": message_category,
+        "issue_category": voter_data.get("issue_category", ""),
+        "issue_description": voter_data.get("issue_description", ""),
     }
+
+
 # -------------------------------------------------
 # Campaign Generation + Audio
 # -------------------------------------------------
-@app.post("/api/generate-campaign")
-def generate_campaign(req: BulkVoterRequest):
+# -------------------------------------------------
+# Generate Campaign from Voter IDs (Supabase)
+# -------------------------------------------------
+class GenerateCampaignFromIdsRequest(BaseModel):
+    voter_ids: List[str]
 
-    
 
+@app.post("/api/generate-campaign-from-ids")
+def generate_campaign_from_ids(req: GenerateCampaignFromIdsRequest):
+    """Generate campaigns for voters by their IDs from Supabase"""
     results = []
-
-    for voter in req.voters:
-        v = voter.model_dump()
-        category = v.get("category", "Swing Voter")
-
-        base_msg = CATEGORY_TEMPLATES.get(category).format(
-            name=v["name"],
-            location=v["location"]
-        )
-
-        # -------------------------------------------------
-        # 1️⃣ Ask OpenAI to return Tamil + English transliteration in JSON
-        # -------------------------------------------------
-        prompt = (
-            f"Generate a Tamil political message.\n"
-            f"Base message: {base_msg}\n"
-            f"Pain points: {', '.join(v['pain_points'])}\n\n"
-            f"Respond ONLY in valid JSON format:\n"
-            f"{{\n"
-            f"  \"content_tamil\": \"string\",\n"
-            f"  \"content_english\": \"same Tamil text spelled using English letters make sure add punctual and other perfectly \"\n"
-            f"}}"
-        )
-
+    
+    for voter_id in req.voter_ids:
         try:
-            resp = client.chat.completions.create(
-                model=GEN_MODEL,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": "Tamil political message expert."},
-                    {"role": "user", "content": prompt},
-                ],
+            # Fetch voter from Supabase
+            response = supabase.table("voters_master").select("*").eq("voter_id", voter_id).execute()
+            
+            if not response.data:
+                results.append({
+                    "voter_id": voter_id,
+                    "error": "Voter not found in database"
+                })
+                continue
+            
+            voter_data = response.data[0]
+            v = map_supabase_voter_to_campaign(voter_data)
+            
+            # Get voter category and issue category from database
+            voter_category = str(voter_data.get("voter_category", "")).strip()
+            issue_category = str(voter_data.get("issue_category", "")).strip()
+            issue_description = str(voter_data.get("issue_description", "")).strip()
+            
+            # Get prompt template based on voter_category and issue_category
+            template = get_prompt_template(voter_category, issue_category)
+            base_msg = format_prompt(
+                template,
+                name=v["name"],
+                location=v["location"],
+                issue_description=issue_description if issue_description else f"{issue_category} பிரச்சனை"
             )
-
-            data = json.loads(resp.choices[0].message.content)
-
-            tamil_msg = data.get("content_tamil", base_msg)
-            english_msg = data.get("content_english", base_msg)
-
-        except Exception as e:
-            print("⚠️ Error:", e)
-            tamil_msg = base_msg
-            english_msg = base_msg
-
-        try:
-            dalle_prompt = (
-                "A vibrant, abstract illustration inspired by Tamil Nadu culture, "
-        "including festive patterns, traditional textures, artistic gradients, "
-        "and decorative motifs. No text, no people, no logos, no political symbols. "
-                f"Theme: {category}. "
-                f"Message in English letters (not Tamil script): {english_msg}. "
-                f"Style: professional, sharp, high-contrast, Indian-election theme."
+            
+            # Generate message with OpenAI
+            pain_points_str = ", ".join(v.get("pain_points", [])) if v.get("pain_points") else ""
+            prompt = (
+                f"Generate a Tamil political message.\n"
+                f"Base message: {base_msg}\n"
+                f"Pain points: {pain_points_str}\n"
+                f"Specific issue: {v.get('issue_description', '')}\n\n"
+                f"Respond ONLY in valid JSON format:\n"
+                f"{{\n"
+                f"  \"content_tamil\": \"string\",\n"
+                f"  \"content_english\": \"same Tamil text spelled using English letters make sure add punctual and other perfectly \"\n"
+                f"}}"
             )
-
-            img_resp = client.images.generate(
-                model="gpt-image-1",
-                prompt=dalle_prompt,
-                size="1024x1024",
-                n=1,
-            )
-
-            b64 = img_resp.data[0].b64_json
-            image_data = base64.b64decode(b64)
-
-            # Save image
-            image_id = str(uuid.uuid4())
-            IMAGE_DIR = "/tmp/images"
-            os.makedirs(IMAGE_DIR, exist_ok=True)
-
-            image_path = os.path.join(IMAGE_DIR, f"{image_id}.png")
-            with open(image_path, "wb") as f:
-                f.write(image_data)
-
-            image_url = f"/api/image/{image_id}"
-
+            
+            try:
+                resp = client.chat.completions.create(
+                    model=GEN_MODEL,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": "Tamil political message expert."},
+                        {"role": "user", "content": prompt},
+                    ],
+                )
+                data = json.loads(resp.choices[0].message.content)
+                tamil_msg = data.get("content_tamil", base_msg)
+                english_msg = data.get("content_english", base_msg)
+            except Exception as e:
+                print(f"⚠️ Error generating message: {e}")
+                tamil_msg = base_msg
+                english_msg = base_msg
+            
+            # Include all voter data and issue information
+            results.append({
+                **v,
+                "id": voter_data.get("voter_id", ""),
+                "voter_id": voter_data.get("voter_id", ""),
+                "name": voter_data.get("voter_name", ""),
+                "voter_name": voter_data.get("voter_name", ""),
+                "age": voter_data.get("age", 0),
+                "gender": voter_data.get("gender", ""),
+                "village": voter_data.get("village", ""),
+                "district": voter_data.get("district", ""),
+                "ward": voter_data.get("ward", ""),
+                "voter_category": voter_data.get("voter_category", ""),
+                "issue_category": voter_data.get("issue_category", ""),
+                "issue_description": voter_data.get("issue_description", ""),
+                "phone_number": voter_data.get("phone_number") or voter_data.get("mobile") or voter_data.get("contact") or "",
+                "base_message": base_msg,
+                "final_message_tamil": tamil_msg,
+                "final_message_english": english_msg
+            })
+            
         except Exception as e:
-            print("⚠️ Image generation failed:", e)
-            image_url = None
-        audio_id = str(uuid.uuid4())
-        audio_path = os.path.join(AUDIO_DIR, f"{audio_id}.mp3")
-
-        try:
-            with open(audio_path, "wb") as f:
-                for chunk in AudioFish.tts(
-                    TTSRequest(
-                        text=english_msg,
-                        reference_id="03e679752fa54b778a189c9f4e9d1889"
-                    )
-                ):
-                    f.write(chunk)
-
-        except Exception as e:
-            print("⚠️ Audio gen failed:", e)
-            audio_id = None
-        print("✅ Generated campaign for:", v["name"])
-
-        results.append({
-            **v,
-            "category": category,
-            "base_message": base_msg,
-            "final_message_tamil": tamil_msg,
-            "final_message_english": english_msg,
-            "audio_url": f"/api/audio/{audio_id}" if audio_id else None,
-            "image_url": image_url
-        })
-
+            print(f"❌ Error processing voter {voter_id}: {e}")
+            results.append({
+                "voter_id": voter_id,
+                "error": str(e)
+            })
+    
     return {"results": results}
 
+
+# -------------------------------------------------
+# Send SMS via Twilio
+# -------------------------------------------------
+class SendSMSRequest(BaseModel):
+    phone_number: str
+    message: str
+    voter_id: Optional[str] = None
+
+
+@app.post("/api/send-sms")
+def send_sms(req: SendSMSRequest):
+    """Send SMS message via Twilio"""
+    if not twilio_client:
+        raise HTTPException(
+            status_code=500, 
+            detail="Twilio not configured. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in .env"
+        )
+    
+    if not TWILIO_PHONE_NUMBER:
+        raise HTTPException(
+            status_code=500,
+            detail="TWILIO_PHONE_NUMBER not configured in .env"
+        )
+    
+    # Validate phone number format (basic validation)
+    phone_number = req.phone_number.strip()
+    if not phone_number:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+    
+    # Ensure phone number starts with + for international format
+    if not phone_number.startswith("+"):
+        # Assume Indian number if no country code
+        if phone_number.startswith("0"):
+            phone_number = "+91" + phone_number[1:]
+        elif len(phone_number) == 10:
+            phone_number = "+91" + phone_number
+        else:
+            phone_number = "+" + phone_number
+    
+    try:
+        # Send SMS via Twilio
+        message = twilio_client.messages.create(
+            body=req.message,
+            from_=TWILIO_PHONE_NUMBER,
+            to=phone_number
+        )
+        
+        return {
+            "success": True,
+            "message_sid": message.sid,
+            "status": message.status,
+            "phone_number": phone_number,
+            "voter_id": req.voter_id
+        }
+    except Exception as e:
+        print(f"❌ Twilio error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to send SMS: {str(e)}"
+        )
+
+
+# -------------------------------------------------
+# Bulk Send SMS to 6 numbers from .env
+# -------------------------------------------------
+class BulkSendSMSRequest(BaseModel):
+    messages: List[Dict[str, str]]  # List of {voter_id, message}
+
+
+@app.post("/api/send-bulk-sms")
+def send_bulk_sms(req: BulkSendSMSRequest):
+    """Send SMS messages to 6 phone numbers from .env (one message per number)"""
+    if not twilio_client:
+        raise HTTPException(
+            status_code=500, 
+            detail="Twilio not configured. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in .env"
+        )
+    
+    if not TWILIO_PHONE_NUMBER:
+        raise HTTPException(
+            status_code=500,
+            detail="TWILIO_PHONE_NUMBER not configured in .env"
+        )
+    
+    if len(PHONE_NUMBERS) != 6:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PHONE_NUMBER must contain exactly 6 phone numbers (comma-separated) in .env. Found {len(PHONE_NUMBERS)}"
+        )
+    
+    if len(req.messages) != 6:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Must send exactly 6 messages. Received {len(req.messages)}"
+        )
+    
+    results = []
+    
+    for i, msg_data in enumerate(req.messages):
+        voter_id = msg_data.get("voter_id", "")
+        message_text = msg_data.get("message", "")
+        phone_number = PHONE_NUMBERS[i] if i < len(PHONE_NUMBERS) else None
+        
+        if not phone_number:
+            results.append({
+                "voter_id": voter_id,
+                "success": False,
+                "error": f"No phone number available at index {i}"
+            })
+            continue
+        
+        # Format phone number
+        formatted_phone = phone_number.strip()
+        if not formatted_phone.startswith("+"):
+            if formatted_phone.startswith("0"):
+                formatted_phone = "+91" + formatted_phone[1:]
+            elif len(formatted_phone) == 10:
+                formatted_phone = "+91" + formatted_phone
+            else:
+                formatted_phone = "+" + formatted_phone
+        
+        try:
+            # Send SMS via Twilio
+            twilio_message = twilio_client.messages.create(
+                body=message_text,
+                from_=TWILIO_PHONE_NUMBER,
+                to=formatted_phone
+            )
+            
+            results.append({
+                "voter_id": voter_id,
+                "success": True,
+                "message_sid": twilio_message.sid,
+                "status": twilio_message.status,
+                "phone_number": formatted_phone
+            })
+        except Exception as e:
+            print(f"❌ Twilio error for {voter_id}: {e}")
+            results.append({
+                "voter_id": voter_id,
+                "success": False,
+                "error": str(e),
+                "phone_number": formatted_phone
+            })
+    
+    return {
+        "results": results,
+        "total_sent": sum(1 for r in results if r.get("success")),
+        "total_failed": sum(1 for r in results if not r.get("success"))
+    }

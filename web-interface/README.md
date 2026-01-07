@@ -1,70 +1,78 @@
-# Getting Started with Create React App
+# Frontend - Tamil Nadu Election Campaign Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React web application for managing voters and generating hyper-personalized campaign messages.
 
-## Available Scripts
+## Prerequisites
 
-In the project directory, you can run:
+- Node.js 14+ and npm
+- Backend API running (see `../python-backend/README.md`)
 
-### `npm start`
+## Installation
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+1. **Install dependencies:**
+   ```bash
+   cd web-interface
+   npm install
+   ```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+2. **Configure API URL:**
+   Create a `.env` file in the `web-interface` directory:
+   ```env
+   REACT_APP_API_BASE_URL=http://localhost:8000
+   ```
+   For production, set this to your deployed backend URL.
 
-### `npm test`
+## Running the Application
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Development Mode
 
-### `npm run build`
+```bash
+npm start
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Production Build
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm run build
+```
 
-### `npm run eject`
+Builds the app for production to the `build` folder.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Features
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- **Voter Management**: Browse and filter voters from Supabase database
+- **Advanced Filtering**: Filter by category, issue, gender, location, age, and search by name/ID
+- **Bulk Selection**: Select multiple voters using checkboxes
+- **Campaign Generation**: Generate personalized Tamil and English campaign messages for selected voters
+- **Results View**: View generated messages in a scrollable table with click-to-view details
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Project Structure
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```
+src/
+├── components/
+│   ├── FilterBar.js          # Filter controls
+│   ├── PeopleTable.js        # Voter table with selection
+│   ├── GenerateContentBar.js # Generate button
+│   └── ResultTable.js        # Results display
+├── App.js                    # Main application component
+└── App.css                   # Global styles
+```
 
-## Learn More
+## API Integration
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+The frontend connects to the backend API at the URL specified in `REACT_APP_API_BASE_URL`:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- `GET /api/voters` - Fetch voters with filters
+- `GET /api/voters/filters/options` - Get filter dropdown options
+- `POST /api/generate-campaign-from-ids` - Generate campaign messages
 
-### Code Splitting
+## Deployment
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+The app can be deployed to any static hosting service (Vercel, Netlify, etc.):
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+1. Build the app: `npm run build`
+2. Deploy the `build` folder
+3. Set `REACT_APP_API_BASE_URL` environment variable to your backend URL

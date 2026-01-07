@@ -1,0 +1,202 @@
+/* PeopleTable.css */
+
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  width: 100%;
+  position: relative;
+  max-height: 320px; /* Show exactly 4 rows (4 rows × ~80px = 320px) */
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table-shell {
+  width: 100%;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: max-content;
+  margin: 0;
+  padding: 0;
+}
+
+/* Table cell and header base styles */
+.table td,
+.table th {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* Round all corners of the table */
+.table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+/* Round bottom corners of last row */
+.table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 12px;
+}
+
+.table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 12px;
+}
+
+.table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  position: sticky;
+  top: -1px; /* Slight negative offset to ensure flush with top */
+  z-index: 10;
+  margin: 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.table thead {
+  margin: 0;
+  padding: 0;
+  display: table-header-group;
+}
+
+.table thead tr {
+  margin: 0;
+  padding: 0;
+}
+
+.table tbody {
+  margin: 0;
+  padding: 0;
+  display: table-row-group;
+}
+
+
+/* Fixed Checkbox column (1st) */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 12;
+  background-color: white;
+  min-width: 50px;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.table thead th:nth-child(1) {
+  position: sticky;
+  top: -1px; /* Slight negative offset to ensure flush with top */
+  left: 0;
+  z-index: 14;
+  background-color: #f3f4f6;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Fixed ID column (2nd) */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  position: sticky;
+  left: 50px; /* Position after checkbox (50px) */
+  z-index: 12;
+  background-color: white;
+  min-width: 100px;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.table thead th:nth-child(2) {
+  position: sticky;
+  top: -1px; /* Slight negative offset to ensure flush with top */
+  left: 50px;
+  z-index: 14;
+  background-color: #f3f4f6;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Fixed Name column (3rd) */
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  position: sticky;
+  left: 150px; /* Position after checkbox (50px) + ID (100px) */
+  z-index: 12;
+  background-color: white;
+  min-width: 150px;
+  max-width: 200px;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.table thead th:nth-child(3) {
+  position: sticky;
+  top: -1px; /* Slight negative offset to ensure flush with top */
+  left: 150px;
+  z-index: 14;
+  background-color: #f3f4f6;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollable columns (4th onwards) - only cells, not headers */
+.table td:nth-child(n+4) {
+  position: relative;
+  z-index: 1;
+  min-width: 100px;
+  background-color: inherit;
+}
+
+/* Scrollable column headers (4th onwards) - keep sticky at top */
+.table th:nth-child(n+4) {
+  position: sticky;
+  top: -1px; /* Slight negative offset to ensure flush with top */
+  z-index: 10;
+  min-width: 100px;
+  background-color: #f3f4f6;
+}
+
+/* Allow text wrapping for scrollable columns */
+.table td:nth-child(n+4) {
+  white-space: normal;
+}
+
+/* Issue Description column should wrap */
+.table td:nth-child(15),
+.table th:nth-child(15) {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+/* Row hover effect */
+.table tbody tr:hover td {
+  background-color: #f9fafb;
+}
+
+/* Fixed columns maintain white background on hover */
+.table tbody tr:hover td:nth-child(1),
+.table tbody tr:hover td:nth-child(2),
+.table tbody tr:hover td:nth-child(3) {
+  background-color: white;
+}
+
+/* Even rows styling */
+.table tbody tr:nth-child(even) td {
+  background-color: #fafafa;
+}
+
+.table tbody tr:nth-child(even) td:nth-child(1),
+.table tbody tr:nth-child(even) td:nth-child(2),
+.table tbody tr:nth-child(even) td:nth-child(3) {
+  background-color: white;
+}
+

@@ -1,22 +1,89 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin-top: 10px;  
+ 
 }
 
 .table th, .table td {
-  border: 1px solid #ddd;
-  padding: 8px;
+  /* border: 1px solid #857474; */
+  padding: 6px 8px;
   text-align: left;
   vertical-align: top;
+
 }
 
 .table th {
   background-color: #f5f5f5;
   font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table tbody tr {
+  transition: background-color 0.2s ease;
+  max-height: 80px;
+  overflow: hidden;
+}
+
+.table tbody tr:hover {
+  background-color: #e3f2fd;
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.table tbody tr:nth-child(even):hover {
+  background-color: #f0f0f0;
+}
+.table td {
+  max-height: 80px;
 }
 
 .card {
   border-radius: 12px;
   box-shadow: 0 0 8px rgba(0,0,0,0.08);
 }
+
+.table-scroll {
+  max-height: 400px; /* Show exactly 5 rows (5 rows × 80px = 400px) */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.table td {
+  min-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table th:nth-child(7),
+.table td:nth-child(7) {
+  min-width: 250px;
+  max-width: 350px;
+}
+
+.table th:nth-child(9),
+.table td:nth-child(9) {
+  min-width: 300px;
+  max-width: 450px;
+}
+
+/* Message cells - show only one line with ellipsis */
+.message-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 450px;
+  line-height: 1.4;
+}
+.cell-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-height: 80px;
+  line-height: 1.4;
+}
+

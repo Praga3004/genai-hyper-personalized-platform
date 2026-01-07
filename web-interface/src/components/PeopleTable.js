@@ -1,5 +1,6 @@
 // src/components/PeopleTable.js
 import React, { useMemo } from "react";
+import "./PeopleTable.css";
 
 export default function PeopleTable({ rows = [], selectedIds = new Set(), setSelectedIds }) {
   // number selected on current page
@@ -50,11 +51,15 @@ export default function PeopleTable({ rows = [], selectedIds = new Set(), setSel
               <th>Age</th>
               <th>Gender</th>
               <th>Location</th>
-              {/* <th>Ward</th> */}
-              <th>Category</th>
-              <th>Interests</th>
-              <th>Pain Points</th>
-              <th>Voter History</th>
+              <th>Village</th>
+              <th>District</th>
+              <th>Ward</th>
+              <th>Area</th>
+              <th>Street</th>
+              <th>Booth Number</th>
+              <th>Voter Category</th>
+              <th>Issue Category</th>
+              <th>Issue Description</th>
             
             </tr>
           </thead>
@@ -73,24 +78,28 @@ export default function PeopleTable({ rows = [], selectedIds = new Set(), setSel
                     </td>
 
                     <td style={{ fontWeight: 600 }}>{rid}</td>
-                    <td>{r.name}</td>
-                    <td>{r.age}</td>
-                    <td>{r.gender}</td>
-                    <td>{r.location}</td>
-                    {/* <td>{r.ward}</td> */}
-                    <td>{r.category}</td>
-
-                    <td>{Array.isArray(r.interests) ? r.interests.join(", ") : r.interests}</td>
-                    <td>{Array.isArray(r.pain_points) ? r.pain_points.join(", ") : r.pain_points}</td>
-
-                    <td>{r.voter_history}</td>
+                    <td><strong>{r.name || "N/A"}</strong></td>
+                    <td>{r.age || "N/A"}</td>
+                    <td>{r.gender || "N/A"}</td>
+                    <td>{r.location || "N/A"}</td>
+                    <td>{r.village || "N/A"}</td>
+                    <td>{r.district || "N/A"}</td>
+                    <td>{r.ward || "N/A"}</td>
+                    <td>{r.area || "N/A"}</td>
+                    <td>{r.street || "N/A"}</td>
+                    <td>{r.booth_number || "N/A"}</td>
+                    <td>{r.voter_category || "N/A"}</td>
+                    <td>{r.issue_category || <span style={{ opacity: 0.5, fontStyle: "italic" }}>No category</span>}</td>
+                    <td style={{ whiteSpace: "pre-wrap", maxWidth: "300px", wordWrap: "break-word" }}>
+                      {r.issue_description || <span style={{ opacity: 0.5, fontStyle: "italic" }}>No issue specified</span>}
+                    </td>
                    
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan={14} style={{ color: "#9ca3af", padding: 18 }}>
+                <td colSpan={15} style={{ color: "#9ca3af", padding: 18 }}>
                   No rows
                 </td>
               </tr>

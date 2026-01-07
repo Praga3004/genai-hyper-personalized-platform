@@ -41,7 +41,7 @@ select, input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px;
 .btn { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.badge { font-size: 12px; color: var(--muted); }
+.badge { font-size: 20px; font-weight: 600; color: var(--muted); }
 .footer-bar { margin-top: 16px; }
 /* simple circle spinner */
 .spinner {

@@ -1,51 +1,47 @@
-import React, { useMemo } from "react";
+import React from "react";
 
-export default function FilterBar({ rows, filters, setFilters, locations, categories }) {
-  // Derive dropdown values dynamically from data
-  const availableLocations = useMemo(() => {
-    return Array.from(new Set(rows.map((r) => r.location).filter(Boolean))).sort();
-  }, [rows]);
-
-  const availableCategories = useMemo(() => {
-    return Array.from(new Set(rows.map((r) => r.category).filter(Boolean))).sort();
-  }, [rows]);
-
-  const availableGenders = useMemo(() => {
-    return Array.from(new Set(rows.map((r) => r.gender).filter(Boolean))).sort();
-  }, [rows]);
+export default function FilterBar({ filters, setFilters, filterOptions = {} }) {
+  const {
+    villages = [],
+    districts = [],
+    wards = [],
+    voter_categories = [],
+    issue_categories = [],
+    genders = [],
+  } = filterOptions;
 
   return (
     <div className="card pad" style={{ marginBottom: 16 }}>
-      <div className="filters">
-        {/* 🏙️ Location */}
+      <div className="filters" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+        {/* 👤 Voter Category */}
         <div>
-          <label>Location</label>
+          <label>Voter Category</label>
           <select
-            value={filters.location}
+            value={filters.voter_category || "ALL"}
             onChange={(e) =>
-              setFilters((f) => ({ ...f, location: e.target.value }))
+              setFilters((f) => ({ ...f, voter_category: e.target.value }))
             }
           >
-            <option value="ALL">All Locations</option>
-            {availableLocations.map((loc) => (
-              <option key={loc} value={loc}>
-                {loc}
+            <option value="ALL">All Categories</option>
+            {voter_categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
               </option>
             ))}
           </select>
         </div>
 
-        {/* 🧩 Category */}
+        {/* 📋 Issue Category */}
         <div>
-          <label>Category</label>
+          <label>Issue Category</label>
           <select
-            value={filters.category}
+            value={filters.issue_category || "ALL"}
             onChange={(e) =>
-              setFilters((f) => ({ ...f, category: e.target.value }))
+              setFilters((f) => ({ ...f, issue_category: e.target.value }))
             }
           >
-            <option value="ALL">All Categories</option>
-            {availableCategories.map((cat) => (
+            <option value="ALL">All Issues</option>
+            {issue_categories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
@@ -57,15 +53,69 @@ export default function FilterBar({ rows, filters, setFilters, locations, catego
         <div>
           <label>Gender</label>
           <select
-            value={filters.gender}
+            value={filters.gender || "ALL"}
             onChange={(e) =>
               setFilters((f) => ({ ...f, gender: e.target.value }))
             }
           >
             <option value="ALL">All</option>
-            {availableGenders.map((g) => (
+            {genders.map((g) => (
               <option key={g} value={g}>
                 {g}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 🏘️ Village */}
+        <div>
+          <label>Village</label>
+          <select
+            value={filters.village || "ALL"}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, village: e.target.value }))
+            }
+          >
+            <option value="ALL">All Villages</option>
+            {villages.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 🏙️ District */}
+        <div>
+          <label>District</label>
+          <select
+            value={filters.district || "ALL"}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, district: e.target.value }))
+            }
+          >
+            <option value="ALL">All Districts</option>
+            {districts.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 🏢 Ward */}
+        <div>
+          <label>Ward</label>
+          <select
+            value={filters.ward || "ALL"}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, ward: e.target.value }))
+            }
+          >
+            <option value="ALL">All Wards</option>
+            {wards.map((w) => (
+              <option key={w} value={w}>
+                {w}
               </option>
             ))}
           </select>
@@ -75,7 +125,7 @@ export default function FilterBar({ rows, filters, setFilters, locations, catego
         <div>
           <label>Age Range</label>
           <select
-            value={filters.age}
+            value={filters.age || "ALL"}
             onChange={(e) =>
               setFilters((f) => ({ ...f, age: e.target.value }))
             }
@@ -90,10 +140,10 @@ export default function FilterBar({ rows, filters, setFilters, locations, catego
 
         {/* 🔍 Search */}
         <div>
-          <label>Search (Name / Relative)</label>
+          <label>Search (Name / ID)</label>
           <input
             type="text"
-            value={filters.q}
+            value={filters.q || ""}
             onChange={(e) =>
               setFilters((f) => ({ ...f, q: e.target.value }))
             }
