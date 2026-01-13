@@ -29,6 +29,7 @@ FastAPI backend for the Tamil Nadu Election Campaign Platform - generating hyper
    TWILIO_AUTH_TOKEN=your_twilio_auth_token
    TWILIO_PHONE_NUMBER=+1234567890
    PHONE_NUMBER=+919876543210,+919876543211,+919876543212,+919876543213,+919876543214,+919876543215
+   AUDIO_FILES=['AudioStuffs/EPS-Sample1.wav', 'AudioStuffs/EPS-Sample2.wav', 'AudioStuffs/EPS-Sample3.wav', 'AudioStuffs/EPS-Sample4.wav', 'AudioStuffs/EPS-Sample5.wav', 'AudioStuffs/EPS-Sample6.wav']
    ```
 
 ## Configuration
@@ -45,8 +46,8 @@ FastAPI backend for the Tamil Nadu Election Campaign Platform - generating hyper
 | `TWILIO_ACCOUNT_SID` | No | Twilio Account SID for SMS functionality |
 | `TWILIO_AUTH_TOKEN` | No | Twilio Auth Token for SMS functionality |
 | `TWILIO_PHONE_NUMBER` | No | Twilio phone number to send SMS from (format: +1234567890) |
-| `PHONE_NUMBER` | No | Comma-separated list of exactly 6 phone numbers to send messages to (format: +919876543210,+919876543211,...) |
-
+| `PHONE_NUMBER` | No | List of phone numbers in Python list format (e.g., `['+919876543210', '+919876543211', ...]`) |
+| `AUDIO_FILES` | No | List of audio file paths matching phone numbers by index (e.g., `['AudioStuffs/EPS-Sample1.wav', 'AudioStuffs/EPS-Sample2 wav', ...]`). Must have same count as phone numbers. |
 ### Database Setup
 
 The backend expects a Supabase table named `voters_master` with the following columns:

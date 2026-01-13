@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from supabase import create_client, Client
 from prompt import get_prompt_template, format_prompt
+from pathlib import Path
 from twilio.rest import Client 
 
 # -------------------------------------------------
@@ -23,12 +24,26 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
-PHONE_NUMBER = os.getenv("PHONE_NUMBER", "")
+PHONE_NUMBER = os.getenv("PHONE_NUMBER")
+AUDIO_FILES_ENV = os.getenv("AUDIO_FILES")
 AZURE_ENDPOINT = os.getenv("AZURE_ENDPOINT")
 
 
 # Parse phone numbers from .env (comma-separated list)
-PHONE_NUMBERS = [p.strip() for p in PHONE_NUMBER.split(",") if p.strip()] if PHONE_NUMBER else []
+PHONE_NUMBERS = eval(PHONE_NUMBER) if PHONE_NUMBER else []
+
+if AUDIO_FILES_ENV and AUDIO_FILES_ENV != "[]":
+    AUDIO_FILES = eval(AUDIO_FILES_ENV)
+else:
+    AUDIO_FILES = [f"AudioStuffs/EPS-Sample{i+1}.wav" for i in range(len(PHONE_NUMBERS))]
+
+# Validate that counts match
+if len(PHONE_NUMBERS) != len(AUDIO_FILES):
+    print(f"⚠️ Warning: {len(PHONE_NUMBERS)} phone numbers but {len(AUDIO_FILES)} audio files. They should match!")
+
+print(f"Loaded {len(PHONE_NUMBERS)} phone numbers")
+print(f"Loaded {len(AUDIO_FILES)} audio files")
+
 if not OPENAI_API_KEY:
     raise RuntimeError("Missing OPENAI_API_KEY in .env")
 
@@ -618,7 +633,7 @@ class BulkSendSMSRequest(BaseModel):
 
 @app.post("/api/send-bulk-sms")
 def send_bulk_sms(req: BulkSendSMSRequest):
-    """Send SMS messages to 6 phone numbers from .env (one message per number)"""
+    """Send SMS messages with audio to phone numbers from .env"""
     if not twilio_client:
         raise HTTPException(
             status_code=500, 
@@ -631,16 +646,22 @@ def send_bulk_sms(req: BulkSendSMSRequest):
             detail="TWILIO_PHONE_NUMBER not configured in .env"
         )
     
-    if len(PHONE_NUMBERS) != 6:
+    if len(PHONE_NUMBERS) == 0:
         raise HTTPException(
             status_code=500,
-            detail=f"PHONE_NUMBER must contain exactly 6 phone numbers (comma-separated) in .env. Found {len(PHONE_NUMBERS)}"
+            detail="No phone numbers configured in .env. Please set PHONE_NUMBER as a list."
         )
-    
-    if len(req.messages) != 6:
+
+    if len(PHONE_NUMBERS) != len(AUDIO_FILES):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Phone numbers ({len(PHONE_NUMBERS)}) and audio files ({len(AUDIO_FILES)}) count mismatch. They must match!"
+        )
+
+    if len(req.messages) != len(PHONE_NUMBERS):
         raise HTTPException(
             status_code=400,
-            detail=f"Must send exactly 6 messages. Received {len(req.messages)}"
+            detail=f"Must send exactly {len(PHONE_NUMBERS)} messages to match configured phone numbers. Received {len(req.messages)}"
         )
     
     results = []
@@ -648,15 +669,8 @@ def send_bulk_sms(req: BulkSendSMSRequest):
     for i, msg_data in enumerate(req.messages):
         voter_id = msg_data.get("voter_id", "")
         message_text = msg_data.get("message", "")
-        phone_number = PHONE_NUMBERS[i] if i < len(PHONE_NUMBERS) else None
-        
-        if not phone_number:
-            results.append({
-                "voter_id": voter_id,
-                "success": False,
-                "error": f"No phone number available at index {i}"
-            })
-            continue
+        phone_number = PHONE_NUMBERS[i]
+        audio_file = AUDIO_FILES[i]
         
         # Format phone number
         formatted_phone = phone_number.strip()
@@ -669,31 +683,71 @@ def send_bulk_sms(req: BulkSendSMSRequest):
                 formatted_phone = "+" + formatted_phone
         
         try:
-            # Send SMS via Twilio
-            twilio_message = twilio_client.messages.create(
-                body=message_text,
-                from_=TWILIO_PHONE_NUMBER,
-                to=formatted_phone
-            )
+            # Check if audio file exists and get absolute path
+            has_audio = False
+            audio_url = None
             
-            results.append({
-                "voter_id": voter_id,
-                "success": True,
-                "message_sid": twilio_message.sid,
-                "status": twilio_message.status,
-                "phone_number": formatted_phone
-            })
+            if audio_file and audio_file.strip():
+                audio_path = Path(audio_file)
+                if audio_path.exists():
+                    audio_url = f"file://{audio_path.absolute()}"
+                    has_audio = True
+                    print(f"Audio file found: {audio_file}")
+                else:
+                    print(f"Audio file not found: {audio_file}")
+            
+            # Send message via Twilio (with or without audio)
+            if has_audio and audio_url:
+                # Send MMS with audio
+                twilio_message = twilio_client.messages.create(
+                    body=message_text,
+                    from_=TWILIO_PHONE_NUMBER,
+                    to=formatted_phone,
+                    media_url=[audio_url]
+                )
+                
+                results.append({
+                    "voter_id": voter_id,
+                    "success": True,
+                    "message_sid": twilio_message.sid,
+                    "status": twilio_message.status,
+                    "phone_number": formatted_phone,
+                    "audio_file": audio_file,
+                    "has_audio": True
+                })
+            else:
+                # Send SMS without audio
+                twilio_message = twilio_client.messages.create(
+                    body=message_text,
+                    from_=TWILIO_PHONE_NUMBER,
+                    to=formatted_phone
+                )
+                
+                results.append({
+                    "voter_id": voter_id,
+                    "success": True,
+                    "message_sid": twilio_message.sid,
+                    "status": twilio_message.status,
+                    "phone_number": formatted_phone,
+                    "audio_file": audio_file,
+                    "has_audio": False,
+                    "warning": "Audio file not found"
+                })
+                
         except Exception as e:
-            print(f"❌ Twilio error for {voter_id}: {e}")
+            print(f"Twilio error for {voter_id}: {e}")
             results.append({
                 "voter_id": voter_id,
                 "success": False,
                 "error": str(e),
-                "phone_number": formatted_phone
+                "phone_number": formatted_phone,
+                "audio_file": audio_file
             })
     
     return {
         "results": results,
         "total_sent": sum(1 for r in results if r.get("success")),
-        "total_failed": sum(1 for r in results if not r.get("success"))
+        "total_failed": sum(1 for r in results if not r.get("success")),
+        "with_audio": sum(1 for r in results if r.get("has_audio", False)),
+        "without_audio": sum(1 for r in results if r.get("success") and not r.get("has_audio", False))
     }
